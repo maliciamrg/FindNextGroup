@@ -1,2 +1,4 @@
 /build/LrDevSettingsCompare.lrplugin/
 /.idea/
+/dist/
+/*.iml
