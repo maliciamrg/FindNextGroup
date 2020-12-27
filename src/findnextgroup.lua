@@ -7,7 +7,7 @@ local LrSelection = import 'LrSelection'
 local LrLogger = import 'LrLogger'
 local logger = LrLogger('FindNextGroupPlugin')
 logger:enable("logfile")
- 
+
 LrTasks.startAsyncTask(function ()
   local catalog = LrApplication.activeCatalog()
 
@@ -18,94 +18,177 @@ LrTasks.startAsyncTask(function ()
     LrDialogs.message("FindNextGroupPlugin", "une photo doit etre selectionné")
     return
   end
-  logger:trace("photo existe")
+  logger:trace("first photo existe")
+
+
+  local ecart = 30*60
+  logger:trace("ecart en secondes : " .. ecart)
 
 
   logger:trace("recherche premiere photo du group")
-  local photo = catalog:getTargetPhoto()
-  local datephotoprev= photo:getFormattedMetadata("dateTimeOriginal")
-  local photolocalidprev= photo.localIdentifier
-  LrSelection.nextPhoto()
+  local photofirst = catalog:getTargetPhoto()
+  local datephotofirst= getdatephotovideo(photofirst)
+  local photolocalidfirst= photofirst.localIdentifier
+  infoPhoto(photofirst,"start")
 
-  while (processPhoto(catalog,photolocalidprev,datephotoprev) == ("dt+30" or "end" ) ) do
-    --recherche premiere photo du group
-    local photo = catalog:getTargetPhoto()
-    datephotoprev= photo:getFormattedMetadata("dateTimeOriginal")
-    photolocalidprev= photo.localIdentifier
+
+  result = "first"
+
+  while (true) do
+
     LrSelection.nextPhoto()
+    local photonext = catalog:getTargetPhoto()
+    local datephotonext= getdatephotovideo(photonext)
+    local photolocalidnext= photonext.localIdentifier
+    infoPhoto(photonext,"next")
+
+    if photolocalidfirst == photolocalidnext then
+      logger:trace("end")
+      result = "end"
+      break
+    end
+    --compare date (diff moins ecart minutes)
+    local delta =  dateconv(datephotonext) - dateconv(datephotofirst)
+    logger:trace("delta '" .. delta .. "'")
+    if delta < 0 then -- il y a un pb de boucle possible
+      logger:trace("first end delta < 0")
+      result = "end"
+      break
+    end
+    if delta < ecart then
+      logger:trace("dt-ecart")
+      result = "dt-ecart"
+      break
+    end
+
+    photofirst = photonext
+    datephotofirst= datephotonext
+    photolocalidfirst= photolocalidnext
+
   end
-  logger:trace("recherche premiere photo du group --- fin")
 
+  if result == "end" then
+    logger:trace("EXIT")
+    return
+  end
 
+  logger:trace("reselection premier photo")
   LrSelection.previousPhoto()
-  local photodebgroup = catalog:getTargetPhoto()
-  local filename = photodebgroup:getFormattedMetadata("fileName")
-  local datephotoprev = photodebgroup:getFormattedMetadata("dateTimeOriginal")
-  logger:trace("The selected photodebgroup's filename is ", filename)
-  logger:trace("The selected photodebgroup's datephoto is ", datephotoprev)
+  infoPhoto(photofirst,"first")
 
 
-  logger:trace("recherche dernier photo du group")
-  local photo = catalog:getTargetPhoto()
-  local datephotoprev= photo:getFormattedMetadata("dateTimeOriginal")
-  local photolocalidprev= photo.localIdentifier
-  LrSelection.nextPhoto()
+  logger:trace("recherche toute les photos du group")
+  local arrayphoto = {}
+  local i = 0
+  local photoprev = catalog:getTargetPhoto()
+  local datephotoprev= getdatephotovideo(photoprev)
+  local photolocalidprev= photoprev.localIdentifier
+  infoPhoto(photoprev,"last")
 
-  while (processPhoto(catalog,photolocalidprev,datephotoprev) == ("dt-30" or "end" ) ) do
---recherche dernier photo du group
-    local photo = catalog:getTargetPhoto()
-    datephotoprev= photo:getFormattedMetadata("dateTimeOriginal")
-    photolocalidprev= photo.localIdentifier
+  result = "last"
+
+  while (true) do
+
     LrSelection.nextPhoto()
+    local photonext = catalog:getTargetPhoto()
+    local datephotonext= getdatephotovideo(photonext)
+    local photolocalidnext= photonext.localIdentifier
+
+    if photolocalidprev == photolocalidnext then
+      logger:trace("end")
+      result = "end"
+      break
+    end
+    --compare date (diff moins ecart minutes)
+    local delta =  dateconv(datephotonext) - dateconv(datephotoprev)
+    logger:trace("delta '" .. delta .. "'")
+    if delta < 0 then -- il y a un pb de boucle possible
+      logger:trace("last end delta < 0")
+      result = "end"
+      break
+    end
+    if delta < ecart then
+      logger:trace("dt-ecart")
+      i=i+1
+      arrayphoto[i] = photonext
+      infoPhoto(photonext,"arrayphoto [" .. i .. "]")
+    else
+      result = "dt+ecart"
+      break
+    end
+
+    photoprev = photonext
+    datephotoprev= datephotonext
+    photolocalidprev= photolocalidnext
+
   end
-  logger:trace("recherche dernier photo du group --- fin")
 
+  logger:trace("selection")
+  catalog:setSelectedPhotos( photofirst , arrayphoto )
 
-  LrSelection.previousPhoto()
-  local photofingroup = catalog:getTargetPhoto()
-  local filename = photofingroup:getFormattedMetadata("fileName")
-  local datephotoprev = photofingroup:getFormattedMetadata("dateTimeOriginal")
-  logger:trace("The selected photofingroup's filename is ", filename)
-  logger:trace("The selected photofingroup's datephoto is ", datephotoprev)
+  logger:trace("EXIT")
 
 end)
 
 -- procees current photo
-function processPhoto(catalog,photolocalidprev,datephotoprev)
-
-  local photo = catalog:getTargetPhoto()
+function infoPhoto(photo,text)
   local filename = photo:getFormattedMetadata("fileName")
-  local datephoto = photo:getFormattedMetadata("dateTimeOriginal")
-
-  logger:trace("The selected photo's filename is ", filename)
-  logger:trace("The selected photo's datephoto is ", datephoto)
-
-  local photolocalid= photo.localIdentifier
-  if photolocalidprev == photolocalid then
-    logger:trace("end")
-    return "end"
+  local datephoto= photo:getFormattedMetadata("dateTimeOriginal")
+  if datephoto == nil then
+    datephoto= photo:getFormattedMetadata("dateTimeDigitized")
+    logger:trace("dateTimeDigitized")
   end
-
---compare date (diff moins 30 minutes)
-  local delta =  dateconv(datephoto) - dateconv(datephotoprev)
-  logger:trace("delta '" .. delta .. "'")
-  if delta < 30 then
-    logger:trace("dt-30")
-    return "dt-30"
-  else
-    logger:trace("dt+30")
-    return "dt+30"
+  if datephoto == nil then
+    datephoto= photo:getFormattedMetadata("dateTimeOriginalISO8601")
+    logger:trace("dateTimeOriginalISO8601")
   end
+  if datephoto == nil then
+    datephoto= photo:getFormattedMetadata("dateTimeDigitizedISO8601")
+    logger:trace("dateTimeDigitizedISO8601")
+  end
+  if datephoto == nil then
+    datephoto= photo:getFormattedMetadata("dateTimeISO8601")
+    logger:trace("dateTimeISO8601")
+  end
+  if datephoto == nil then
+    datephoto= photo:getFormattedMetadata("dateTime")
+    logger:trace("dateTime")
+  end
+  logger:trace(text .. " photo's filename is " .. filename)
+  logger:trace(text .. " photo's datephoto is " .. datephoto)
+end
 
+function getdatephotovideo(photo)
+  local dtphoto= photo:getFormattedMetadata("dateTimeOriginal")
+  if dtphoto == nil then
+    dtphoto= photo:getFormattedMetadata("dateTimeDigitized")
+    logger:trace("dateTimeDigitized")
+  end
+  if dtphoto == nil then
+    dtphoto= photo:getFormattedMetadata("dateTimeOriginalISO8601")
+    logger:trace("dateTimeOriginalISO8601")
+  end
+  if dtphoto == nil then
+    dtphoto= photo:getFormattedMetadata("dateTimeDigitizedISO8601")
+    logger:trace("dateTimeDigitizedISO8601")
+  end
+  if dtphoto == nil then
+    dtphoto= photo:getFormattedMetadata("dateTimeISO8601")
+    logger:trace("dateTimeISO8601")
+  end
+  if dtphoto == nil then
+    dtphoto= photo:getFormattedMetadata("dateTime")
+    logger:trace("dateTime")
+  end
+  return dtphoto
 end
 
 -- dateconv
 function dateconv(datephoto)
-  logger:trace("date '" .. datephoto .. "'")
   local p="(%d+)/(%d+)/(%d+) (%d+):(%d+):(%d+)"
   day,month,year,hour,min,sec=datephoto:match(p)
   offset=os.time()-os.time(os.date("!*t"))
   local dtconv =  os.time({day=day,month=month,year=year,hour=hour,min=min,sec=sec})+offset
-  logger:trace("date convertie ", dtconv)
+  logger:trace("date '" .. datephoto .. "'" .. " date convertie = " .. dtconv)
   return dtconv
 end
