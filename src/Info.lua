@@ -2,7 +2,7 @@
 --
 
 return {
-  VERSION = { display="202012280134" },
+  VERSION = { display="202012280208" },
  
   LrSdkVersion = 9.0,
   LrSdkMinimumVersion = 4.0,
