@@ -21,7 +21,7 @@ LrTasks.startAsyncTask(function ()
   logger:trace("first photo existe")
 
 
-  local ecart = 30*60
+  local ecart = PluginInit.currentEcartInMn * 60
   logger:trace("ecart en secondes : " .. ecart)
 
 
@@ -128,6 +128,8 @@ LrTasks.startAsyncTask(function ()
 
   logger:trace("EXIT")
 
+  Choiceactionforselection()
+
 end)
 
 -- procees current photo
@@ -191,4 +193,8 @@ function dateconv(datephoto)
   local dtconv =  os.time({day=day,month=month,year=year,hour=hour,min=min,sec=sec})+offset
   logger:trace("date '" .. datephoto .. "'" .. " date convertie = " .. dtconv)
   return dtconv
+end
+
+function Choiceactionforselection()
+
 end

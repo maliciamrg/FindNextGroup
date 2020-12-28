@@ -2,7 +2,7 @@
 --
 
 return {
-  VERSION = { display="202012270303" },
+  VERSION = { display="202012280134" },
  
   LrSdkVersion = 9.0,
   LrSdkMinimumVersion = 4.0,
@@ -10,10 +10,11 @@ return {
   LrToolkitIdentifier = "com.maliciamrg.hello",
   LrPluginName = "FindNextGroup",
   LrPluginInfoUrl="http://www.daisy-street.fr/wordpress/android/",
-  LrLibraryMenuItems = {
-    {
-      title = "FindNextGroup",
-      file = "findnextgroup.lua",
-    },
-  }, 
+
+  LrPluginInfoProvider = 'PluginInfoProvider.lua',
+  LrInitPlugin = 'PluginInit.lua',
+
+  LrExportMenuItems = { title = 'My &Plugin', file = 'somefile.lua' },  -- File menu
+  LrLibraryMenuItems = { title = '&Workflow New', file = 'findnextgroup.lua' }, -- Library menu
+  LrHelpMenuItems = { title = 'My &Plugin', file = 'somefile.lua' },    -- Help menu
 }
