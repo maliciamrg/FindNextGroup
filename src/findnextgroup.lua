@@ -3,6 +3,7 @@ local LrDialogs = import 'LrDialogs'
 local LrTasks = import 'LrTasks'
 local LrSelection = import 'LrSelection'
 local LrView = import "LrView"
+local LrDate = import "LrDate"
 local LrBinding = import "LrBinding"
 local LrDialogs = import "LrDialogs"
 local LrFunctionContext = import "LrFunctionContext"
@@ -107,8 +108,7 @@ function principale(sens)
 
     logger:trace("reselection premier photo")
     LrSelection_previousPhoto(sens)
-    infoPhoto(photofirst, "first")
-
+    infoPhoto(photofirst, "first      [" .. 0 .. "]")
 
     logger:trace("recherche toute les photos du group")
     local arrayphoto = {}
@@ -169,65 +169,146 @@ function principale(sens)
     end
 
     logger:trace("selection")
+    arrayphoto[0] = photofirst
     catalog:setSelectedPhotos(photofirst, arrayphoto)
 
     logger:trace("EXIT")
 
-    ChoiceBoxactionforselection()
+    if NbRepDifferent(arrayphoto) == 0 then
+        dialogGetNextGroup()
+    else
+        ChoiceBoxactionforselection()
+    end
 
     logger:trace("OUT")
 end
 
+local function has_value(tab, val)
+    --    logger:trace("==val==" .. val)
+    for index, value in pairs(tab) do
+        --        logger:trace("==index==" .. index)
+        --        logger:trace("==value==" .. value)
+        if index == val then
+            return true
+        end
+    end
+    return false
+end
+
+-- procees current photo
+function NbRepDifferent(arrayphoto)
+    logger:trace("NbRepDifferent--in")
+    repPhoto = {} -- new array
+    repPhotoVal = {} -- new array
+
+    --    logger:trace("------ " .. 0 .. " - " .. arrayphoto[0]:getFormattedMetadata("folderName") .. " ")
+
+    ii = 0
+    repPhoto[ii] = arrayphoto[0]:getFormattedMetadata("folderName")
+    repPhotoVal[ii] = 1
+    logger:trace("---- " .. ii .. " - " .. repPhoto[ii] .. " : " .. repPhotoVal[ii] .. " ")
+
+    for i = 1, #arrayphoto do
+        --        logger:trace("------ " .. i .. " - " .. arrayphoto[i]:getFormattedMetadata("folderName") .. " ")
+        --        logger:trace("--i- " .. i .. " ")
+
+        pastrouver = true
+        for ii = 0, #repPhoto do
+            --            logger:trace("-ii- " .. ii .. " ")
+            if repPhoto[ii] == arrayphoto[i]:getFormattedMetadata("folderName") then
+                repPhotoVal[ii] = repPhotoVal[ii] + 1
+                pastrouver = false
+                logger:trace("-||- " .. ii .. " - " .. repPhoto[ii] .. " : " .. repPhotoVal[ii] .. " ")
+            end
+        end
+        if pastrouver then
+            ii = ii + 1
+            repPhoto[ii] = arrayphoto[i]:getFormattedMetadata("folderName")
+            repPhotoVal[ii] = 1
+            logger:trace("-__- " .. ii .. " - " .. repPhoto[ii] .. " : " .. repPhotoVal[ii] .. " ")
+        end
+    end
+    logger:trace("NbRepDifferent--out => " .. #repPhoto)
+    return #repPhoto
+end
+
 -- procees current photo
 function infoPhoto(photo, text)
+
+    local datephoto = getdatephotovideo(photo)
     local filename = photo:getFormattedMetadata("fileName")
-    local datephoto = photo:getFormattedMetadata("dateTimeOriginal")
-    if datephoto == nil then
-        datephoto = photo:getFormattedMetadata("dateTimeDigitized")
-        logger:trace("dateTimeDigitized")
+    local repphoto = photo:getFormattedMetadata("folderName")
+
+    logger:trace(text .. " photo's filename   is " .. filename)
+    logger:trace(text .. " photo's datephoto  is " .. datephoto)
+    logger:trace(text .. " photo's repertoire is " .. repphoto)
+end
+
+function displayArr(arr)
+    s = "\n"
+    for k, v in pairs(arr) do
+        --        s = s .. k .. ":" .. "\n" -- concatenate key/value pairs, with a newline in-between
+        if string.find(k, "date") then
+            s = s .. k .. ":" .. v .. "\n" -- concatenate key/value pairs, with a newline in-between
+        end
+        if string.find(k, "Time") then
+            s = s .. k .. ":" .. v .. "\n" -- concatenate key/value pairs, with a newline in-between
+        end
     end
-    if datephoto == nil then
-        datephoto = photo:getFormattedMetadata("dateTimeOriginalISO8601")
-        logger:trace("dateTimeOriginalISO8601")
-    end
-    if datephoto == nil then
-        datephoto = photo:getFormattedMetadata("dateTimeDigitizedISO8601")
-        logger:trace("dateTimeDigitizedISO8601")
-    end
-    if datephoto == nil then
-        datephoto = photo:getFormattedMetadata("dateTimeISO8601")
-        logger:trace("dateTimeISO8601")
-    end
-    if datephoto == nil then
-        datephoto = photo:getFormattedMetadata("dateTime")
-        logger:trace("dateTime")
-    end
-    logger:trace(text .. " photo's filename is " .. filename)
-    logger:trace(text .. " photo's datephoto is " .. datephoto)
+    logger:trace(s)
 end
 
 function getdatephotovideo(photo)
-    local dtphoto = photo:getFormattedMetadata("dateTimeOriginal")
-    if dtphoto == nil then
-        dtphoto = photo:getFormattedMetadata("dateTimeDigitized")
+
+    logger:trace("getFormattedMetadata")
+    local atest = photo:getFormattedMetadata(nil)
+    displayArr(atest)
+
+    logger:trace("getRawMetadata")
+    local atestR = photo:getRawMetadata(nil)
+    displayArr(atestR)
+
+    local dtphoto = nil
+    if dtphoto == nil and has_value(atest, "dateTimeOriginal") then
+        logger:trace("dateTimeOriginal")
+        dtphoto = photo:getFormattedMetadata("dateTimeOriginal")
+    end
+    if dtphoto == nil and has_value(atest, "dateTimeDigitized") then
         logger:trace("dateTimeDigitized")
+        dtphoto = photo:getFormattedMetadata("dateTimeDigitized")
     end
-    if dtphoto == nil then
-        dtphoto = photo:getFormattedMetadata("dateTimeOriginalISO8601")
-        logger:trace("dateTimeOriginalISO8601")
-    end
-    if dtphoto == nil then
-        dtphoto = photo:getFormattedMetadata("dateTimeDigitizedISO8601")
-        logger:trace("dateTimeDigitizedISO8601")
-    end
-    if dtphoto == nil then
-        dtphoto = photo:getFormattedMetadata("dateTimeISO8601")
-        logger:trace("dateTimeISO8601")
-    end
-    if dtphoto == nil then
-        dtphoto = photo:getFormattedMetadata("dateTime")
+    if dtphoto == nil and has_value(atest, "dateTime") then
         logger:trace("dateTime")
+        dtphoto = photo:getFormattedMetadata("dateTime")
     end
+    if dtphoto == nil and has_value(atest, "dateTimeOriginalISO8601") then
+        logger:trace("dateTimeOriginalISO8601")
+        dtphoto = photo:getFormattedMetadata("dateTimeOriginalISO8601")
+    end
+    if dtphoto == nil and has_value(atest, "dateTimeDigitizedISO8601") then
+        logger:trace("dateTimeDigitizedISO8601")
+        dtphoto = photo:getFormattedMetadata("dateTimeDigitizedISO8601")
+    end
+    if dtphoto == nil and has_value(atest, "dateTimeISO8601") then
+        logger:trace("dateTimeISO8601")
+        dtphoto = photo:getFormattedMetadata("dateTimeISO8601")
+    end
+
+    if dtphoto == nil and has_value(atestR, "dateTimeOriginal") then
+        logger:trace("dateTimeOriginal")
+        dtphoto = LrDate.formatShortDate(photo:getRawMetadata("dateTimeOriginal")) .. " " .. LrDate.formatShortTime(photo:getRawMetadata("dateTimeOriginal")) .. ":00"
+    end
+    if dtphoto == nil and has_value(atestR, "captureTime") then
+        logger:trace("captureTime")
+        dtphoto = photo:getRawMetadata("captureTime")
+        dtphoto = LrDate.formatShortDate(photo:getRawMetadata("captureTime")) .. " " .. LrDate.formatShortTime(photo:getRawMetadata("captureTime")) .. ":00"
+    end
+
+    if dtphoto == nil and has_value(atest, "dateCreated") then
+        logger:trace("dateCreated")
+        dtphoto = photo:getFormattedMetadata("dateCreated")
+    end
+
     return dtphoto
 end
 
@@ -264,6 +345,57 @@ function ChoiceBoxactionforselection()
         },
         f:row {
             spacing = f:label_spacing(),
+            f:static_text {
+                title = "----------------------------",
+            },
+        },
+        f:row {
+            spacing = f:label_spacing(),
+            f:push_button {
+                title = "Ne&w",
+                action = function()
+                    dialogNewRepForGroup()
+                end,
+            },
+            spacing = f:label_spacing(),
+            f:static_text {
+                title = "Créer un repertoire et deplacer dans le repertoire",
+            },
+        },
+        f:row {
+            spacing = f:label_spacing(),
+            f:push_button {
+                title = "&Move",
+                action = function()
+                    dialogMoveGroupToRep()
+                end,
+            },
+            spacing = f:label_spacing(),
+            f:static_text {
+                title = "Deplacer dans un repertoire",
+            },
+        },
+        f:row {
+            spacing = f:label_spacing(),
+            f:push_button {
+                title = "&Add",
+                action = function()
+                    dialogAddGroupToRep()
+                end,
+            },
+            spacing = f:label_spacing(),
+            f:static_text {
+                title = "Deplacer vers repertoire contigu",
+            },
+        },
+        f:row {
+            spacing = f:label_spacing(),
+            f:static_text {
+                title = "----------------------------",
+            },
+        },
+        f:row {
+            spacing = f:label_spacing(),
             f:push_button {
                 title = "&Prev",
                 action = function()
@@ -286,6 +418,31 @@ function ChoiceBoxactionforselection()
             spacing = f:label_spacing(),
             f:static_text {
                 title = "Go to next group ",
+            },
+        },
+        f:row {
+            spacing = f:label_spacing(),
+            f:static_text {
+                title = "----------------------------",
+            },
+        },
+        f:row {
+            spacing = f:label_spacing(),
+            f:push_button {
+                title = "&Del",
+                action = function()
+                    dialogDelGroup()
+                end,
+            },
+            spacing = f:label_spacing(),
+            f:static_text {
+                title = "Suppression du groupe",
+            },
+        },
+        f:row {
+            spacing = f:label_spacing(),
+            f:static_text {
+                title = "----------------------------",
             },
         },
         f:row {
@@ -335,10 +492,11 @@ function refreshChoiceBoxactionforselection(object)
     logger:trace("refreshChoiceBoxactionforselection")
 end
 
-
 function dialogExitGroup()
     logger:trace("dialogExitGroup")
-    LrDialogs_presentFloatingDialog_object.close()
+    if LrDialogs_presentFloatingDialog_object ~= nil then
+        LrDialogs_presentFloatingDialog_object.close()
+    end
 end
 
 function dialogGetNextGroup()
@@ -363,4 +521,22 @@ function dialogGetPrevGroup()
         logger:trace("startAsyncTask")
         principale(-1)
     end)
+end
+
+function dialogMoveGroupToRep()
+    logger:trace("dialogMoveGroupToRep")
+end
+
+function dialogAddGroupToRep()
+    logger:trace("dialogAddGroupToRep")
+end
+
+function dialogNewRepForGroup()
+    logger:trace("dialogNewRepForGroup")
+end
+
+function dialogDelGroup()
+    logger:trace("dialogDelGroup")
+    LrSelection.flagAsReject()
+    dialogGetNextGroup()
 end
